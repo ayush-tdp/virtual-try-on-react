@@ -124,7 +124,7 @@ const RingTryOn = () => {
             )}
 
             <div
-              className="relative w-full h-[320px] lg:h-[500px]  bg-gray-200 bg-center bg-contain bg-no-repeat rounded-lg"
+              className="relative w-full h-[320px] lg:h-[500px]  bg-white bg-center bg-contain bg-no-repeat rounded-lg"
               style={{ backgroundImage: `url(${handPreview})` }}
             >
               <Draggable
@@ -155,16 +155,16 @@ const RingTryOn = () => {
             {/* Ring Style */}
             <div className="p-4 bg-gray-50 rounded-lg shadow-sm">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ring Style
+                Ring Metal Color
               </label>
               <select
                 value={ringFilter}
                 onChange={handleRingFilterChange}
                 className="w-full p-2 border rounded-md"
               >
-                <option value="round">Round</option>
-                <option value="oval">Oval</option>
-                <option value="emerald">Emerald</option>
+                <option value="round">Silver</option>
+                {/* <option value="oval">Oval</option> */}
+                <option value="emerald">Gold</option>
               </select>
             </div>
 
@@ -175,8 +175,8 @@ const RingTryOn = () => {
               </label>
               <input
                 type="range"
-                min="50"
-                max="200"
+                min="1"
+                max="500"
                 value={ringSize}
                 onChange={(e) => setRingSize(parseInt(e.target.value, 10))}
                 className="w-full"
