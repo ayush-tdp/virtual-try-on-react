@@ -32,20 +32,31 @@ const RingTryOn = () => {
     loadAssets();
   }, [handPreview]);
 
-  // Call this on button click
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        // video: { facingMode: 'environment' },
-        // audio: false
-      });
-      setCameraStream(stream); // Store stream temporarily
-      setShowCamera(true); // Trigger video render
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' },
+          audio: false,
+        });
+      } catch (envErr) {
+        console.warn('Rear camera not available, trying default...');
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
+      }
+
+      setCameraStream(stream);
+      setShowCamera(true);
     } catch (error) {
       console.error('Camera error:', error.name, error.message);
-      alert(`Camera error: ${error.name}`);
+      alert(`Camera error: ${error.name} - ${error.message}`);
     }
   };
+
+
 
   // Wait for video to render before attaching stream
   useEffect(() => {
