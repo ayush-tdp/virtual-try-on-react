@@ -8,9 +8,19 @@ import ringImage3 from './assets/images/ring2.png';
 const RingTryOn = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  const [ringImage, setRingImage] = useState(ringImage1);
+  const [ringSrc, setRingSrc] = useState(ringImage1);
+  const ringImgRef = useRef(new Image());
   const [ringFilter, setRingFilter] = useState('round');
   const [cameraActive, setCameraActive] = useState(false);
+
+  useEffect(() => {
+    const img = new Image();
+    img.src = ringSrc;
+    img.onload = () => {
+      ringImgRef.current = img;
+    };
+  }, [ringSrc]);
+
 
   useEffect(() => {
     if (!cameraActive) return;
@@ -33,7 +43,13 @@ const RingTryOn = () => {
       height: 480
     });
 
-    camera.start();
+    try {
+      camera.start();
+    } catch (err) {
+      console.error("Camera failed to start", err);
+      alert(`Camera failed to start. Please check browser permissions. ${err}`);
+    }
+
 
     return () => {
       camera.stop();
@@ -43,10 +59,13 @@ const RingTryOn = () => {
 
   const onResults = (results) => {
     const canvas = canvasRef.current;
+
     const ctx = canvas.getContext('2d');
     const video = videoRef.current;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
+
+    if (!canvas || !video) return;
 
     // Draw video frame
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -71,28 +90,35 @@ const RingTryOn = () => {
 
       ctx.save();
       ctx.translate(cx, cy);
-      ctx.drawImage(
-        ringImage,
-        -ringSize / 2,
-        -ringSize / 2,
-        ringSize,
-        ringSize
-      );
+      const ringImg = ringImgRef.current;
+      if (ringImg && ringImg.complete) {
+        ctx.drawImage(
+          ringImg,
+          -ringSize / 2,
+          -ringSize / 2,
+          ringSize,
+          ringSize
+        );
+      }
+
+
       ctx.restore();
     }
   };
-
   const handleRingFilterChange = (e) => {
     const val = e.target.value;
     setRingFilter(val);
-    setRingImage(val === 'round' ? ringImage1 : val === 'oval' ? ringImage2 : ringImage3);
+    setRingSrc(val === 'round' ? ringImage1 : val === 'oval' ? ringImage2 : ringImage3);
   };
+
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center p-4">
       <div className="w-full max-w-3xl bg-white rounded-lg shadow-md p-4">
         <h1 className="text-2xl font-semibold text-center mb-4">Live Ring Try-On</h1>
-        <div className="aspect-w-4 aspect-h-3 relative mb-4">
+        <div style={{ aspectRatio: '4 / 3' }}
+          className="relative mb-4 w-full h-auto"
+        >
           <video
             ref={videoRef}
             style={{ display: cameraActive ? 'block' : 'none' }}
@@ -103,6 +129,8 @@ const RingTryOn = () => {
           />
           <canvas
             ref={canvasRef}
+            style={{ zIndex: 10, pointerEvents: 'none' }}
+
             className="absolute top-0 left-0 w-full h-full rounded-lg"
           />
         </div>
@@ -128,7 +156,7 @@ const RingTryOn = () => {
           )}
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 
