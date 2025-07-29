@@ -14,6 +14,8 @@ const RingTryOn = () => {
   const [ringFilter, setRingFilter] = useState('round');
   const [showCamera, setShowCamera] = useState(false);
   const [handPreview, setHandPreview] = useState(handImage);
+  const [cameraStream, setCameraStream] = useState(null);
+
 
   // Load images
   useEffect(() => {
@@ -30,17 +32,37 @@ const RingTryOn = () => {
     loadAssets();
   }, [handPreview]);
 
-  // Handle camera stream
+  // Call this on button click
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      videoRef.current.srcObject = stream;
-      setShowCamera(true);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        // video: { facingMode: 'environment' },
+        // audio: false
+      });
+      setCameraStream(stream); // Store stream temporarily
+      setShowCamera(true); // Trigger video render
     } catch (error) {
-      alert(error);
-      console.error(error);
+      console.error('Camera error:', error.name, error.message);
+      alert(`Camera error: ${error.name}`);
     }
   };
+
+  // Wait for video to render before attaching stream
+  useEffect(() => {
+    if (showCamera && videoRef.current && cameraStream) {
+      videoRef.current.srcObject = cameraStream;
+    }
+  }, [showCamera, cameraStream]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [cameraStream]);
+
 
   const captureImage = () => {
     const canvas = document.createElement('canvas');
@@ -67,8 +89,8 @@ const RingTryOn = () => {
     setRingFilter(value);
     setRingImage(
       value === 'round' ? ringImage1 :
-      value === 'oval' ? ringImage2 :
-      ringImage3
+        value === 'oval' ? ringImage2 :
+          ringImage3
     );
   };
 
@@ -173,7 +195,15 @@ const RingTryOn = () => {
               </button>
             ) : (
               <div className="flex flex-col gap-2">
-                <video ref={videoRef} autoPlay playsInline className="rounded-md shadow-md w-full" />
+                {showCamera && (
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full rounded shadow-md"
+                  />
+                )}
                 <button
                   onClick={captureImage}
                   className="py-2 px-4 bg-green-600 text-white rounded hover:bg-green-700 transition"
