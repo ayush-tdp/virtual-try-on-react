@@ -37,7 +37,7 @@ const RingTryOn = () => {
       videoRef.current.srcObject = stream;
       setShowCamera(true);
     } catch (error) {
-      alert('Camera access denied');
+      alert(error);
       console.error(error);
     }
   };
