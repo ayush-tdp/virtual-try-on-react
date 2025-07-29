@@ -1,136 +1,202 @@
 import React, { useRef, useEffect, useState } from 'react';
-import Webcam from 'react-webcam';
-import * as THREE from 'three';
-import * as tf from '@tensorflow/tfjs-core';
-import '@tensorflow/tfjs-converter';
-import '@tensorflow/tfjs-backend-webgl';
-import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
-import glassesSrc from './assets/images/sunglasses.png';
+import Draggable from 'react-draggable';
+import handImage from './assets/images/hand1.jpg';
+import ringImage1 from './assets/images/ring.png';
+import ringImage2 from './assets/images/ring1.webp';
+import ringImage3 from './assets/images/ring2.png';
 
-const VirtualTryOn = () => {
-  const webcamRef = useRef(null);
-  const canvasRef = useRef(null);
-  const [model, setModel] = useState(null);
-  const [glassesMesh, setGlassesMesh] = useState(null);
+const RingTryOn = () => {
+  const videoRef = useRef(null);
+  const [ringImage, setRingImage] = useState(ringImage1);
+  const [ringSize, setRingSize] = useState(100);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  const [ringFilter, setRingFilter] = useState('round');
+  const [showCamera, setShowCamera] = useState(false);
+  const [handPreview, setHandPreview] = useState(handImage);
 
+  // Load images
   useEffect(() => {
-    const loadResources = async () => {
+    const loadAssets = async () => {
       try {
-        // Camera Access
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        if (webcamRef.current) {
-          webcamRef.current.srcObject = stream;
-        }
-
-        // TensorFlow Model
-        await tf.setBackend('webgl');
-        const loadedModel = await faceLandmarksDetection.load(
-          faceLandmarksDetection.SupportedPackages.mediapipeFacemesh,
-          { shouldLoadIrisModel: true, maxFaces: 1 }
-        );
-        setModel(loadedModel);
-
-        // Three.js Setup
-        const width = canvasRef.current.clientWidth;
-        const height = canvasRef.current.clientHeight;
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-        camera.position.z = 5;
-        const renderer = new THREE.WebGLRenderer({ canvas: canvasRef.current, alpha: true });
-        renderer.setSize(width, height);
-        renderer.setAnimationLoop(() => renderer.render(scene, camera));
-
-        // Glasses Mesh
-        const textureLoader = new THREE.TextureLoader();
-        textureLoader.load(glassesSrc, (texture) => {
-          texture.colorSpace = THREE.SRGBColorSpace;
-          const geometry = new THREE.PlaneGeometry(2, 1);
-          const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-          const glasses = new THREE.Mesh(geometry, material);
-          scene.add(glasses);
-          setGlassesMesh(glasses);
-        });
-      } catch (error) {
-        console.error("Initialization error:", error);
+        const img = new Image();
+        img.src = handPreview;
+        img.onload = () => setIsLoading(false);
+      } catch (err) {
+        console.error('Asset load failed:', err);
         setIsLoading(false);
       }
     };
+    loadAssets();
+  }, [handPreview]);
 
-    loadResources();
-  }, []);
+  // Handle camera stream
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      videoRef.current.srcObject = stream;
+      setShowCamera(true);
+    } catch (error) {
+      alert('Camera access denied');
+      console.error(error);
+    }
+  };
 
-  useEffect(() => {
-    let animationFrameId;
+  const captureImage = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+    setHandPreview(canvas.toDataURL('image/jpeg'));
+    videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
+    setShowCamera(false);
+  };
 
-    const detectAndPositionGlasses = async () => {
-      if (!webcamRef.current || !model || !glassesMesh) return;
-      const video = webcamRef.current.video;
-      if (video.readyState !== 4) return;
-    
-      const faceEstimates = await model.estimateFaces({ input: video });
-      if (faceEstimates.length > 0) {
-        setIsLoading(false);
-        const keypoints = faceEstimates[0].scaledMesh;
-    
-        // Glasses positioning
-        const leftEye = keypoints[130];
-        const rightEye = keypoints[359];
-        const eyeCenter = keypoints[168];
-    
-        const eyeDistance = Math.sqrt(
-          Math.pow(rightEye[0] - leftEye[0], 2) + Math.pow(rightEye[1] - leftEye[1], 2)
-        );
-        const scaleMultiplier = eyeDistance / 140;
-    
-        glassesMesh.position.x = (eyeCenter[0] - video.videoWidth / 2) * -0.01;
-        glassesMesh.position.y = (eyeCenter[1] - video.videoHeight / 2) * -0.01;
-        glassesMesh.scale.set(scaleMultiplier, scaleMultiplier, scaleMultiplier);
-        glassesMesh.position.z = 1;
-    
-        const eyeLine = new THREE.Vector2(rightEye[0] - leftEye[0], rightEye[1] - leftEye[1]);
-        const rotationZ = Math.atan2(eyeLine.y, eyeLine.x);
-        glassesMesh.rotation.z = rotationZ;
-      }
-    
-      animationFrameId = requestAnimationFrame(detectAndPositionGlasses);
-    };
-    
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setHandPreview(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
 
-    detectAndPositionGlasses();
-
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [model, glassesMesh]);
+  const handleRingFilterChange = (e) => {
+    const value = e.target.value;
+    setRingFilter(value);
+    setRingImage(
+      value === 'round' ? ringImage1 :
+      value === 'oval' ? ringImage2 :
+      ringImage3
+    );
+  };
 
   return (
-    <>
-      <div style={{ borderBottom: '1px solid rgba(0, 0, 0, 0.2)' }}>
-        <h1 style={{ textAlign: 'center' }}>Virtual Try-On - 2D Glasses</h1>
-      </div>
-      <div style={{ position: 'relative', margin: '0 auto', width: '800px', height: '800px' }}>
-        {isLoading && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              backgroundColor: 'rgba(255, 255, 255, 0.5)',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              zIndex: 2,
-            }}
-          >
-            <h3>Loading...</h3>
+    <div className="h-screen bg-gray-100 flex flex-col items-center p-4">
+      <div className="w-full h-full max-w-5xl bg-white rounded-lg shadow-md overflow-hidden">
+        <header className="text-center p-4 border-b border-gray-200">
+          <h1 className="text-2xl font-semibold text-gray-800">
+            Virtual Ring Try-On
+          </h1>
+        </header>
+
+        <div className="flex flex-col lg:flex-row p-4 gap-6">
+          {/* Try-On Area */}
+          <div className="flex-1 relative min-h-[320px] lg:min-h-[500px]">
+            {isLoading && (
+              <div className="absolute inset-0 bg-white bg-opacity-60 flex items-center justify-center z-10">
+                <p className="text-gray-600">Loading...</p>
+              </div>
+            )}
+
+            <div
+              className="relative w-full h-[320px] lg:h-[500px]  bg-gray-200 bg-center bg-contain bg-no-repeat rounded-lg"
+              style={{ backgroundImage: `url(${handPreview})` }}
+            >
+              <Draggable
+                position={position}
+                onDrag={(e, data) => setPosition({ x: data.x, y: data.y })}
+                bounds="parent"
+              >
+                <div
+                  className="absolute cursor-move"
+                  style={{
+                    width: `${ringSize}px`,
+                    height: `${ringSize}px`,
+                    transform: 'translate(-50%, -50%)',
+                  }}
+                >
+                  <img
+                    src={ringImage}
+                    alt="Ring"
+                    className="w-full h-full object-contain drop-shadow-md"
+                  />
+                </div>
+              </Draggable>
+            </div>
           </div>
-        )}
-        <Webcam ref={webcamRef} autoPlay playsInline style={{ width: '800px', height: '800px' }} mirrored={true} />
-        <canvas ref={canvasRef} style={{ width: '800px', height: '800px', position: 'absolute', top: 0, left: 0 }} />
+
+          {/* Controls Panel */}
+          <aside className="w-full lg:w-80 flex flex-col gap-4">
+            {/* Ring Style */}
+            <div className="p-4 bg-gray-50 rounded-lg shadow-sm">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Ring Style
+              </label>
+              <select
+                value={ringFilter}
+                onChange={handleRingFilterChange}
+                className="w-full p-2 border rounded-md"
+              >
+                <option value="round">Round</option>
+                <option value="oval">Oval</option>
+                <option value="emerald">Emerald</option>
+              </select>
+            </div>
+
+            {/* Ring Size */}
+            <div className="p-4 bg-gray-50 rounded-lg shadow-sm">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Ring Size ({ringSize}px)
+              </label>
+              <input
+                type="range"
+                min="50"
+                max="200"
+                value={ringSize}
+                onChange={(e) => setRingSize(parseInt(e.target.value, 10))}
+                className="w-full"
+              />
+            </div>
+
+            {/* Upload Hand Image */}
+            <div className="p-4 bg-gray-50 rounded-lg shadow-sm">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Upload Hand Image
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                className="block w-full text-sm"
+              />
+            </div>
+
+            {/* Live Camera */}
+            {!showCamera ? (
+              <button
+                onClick={startCamera}
+                className="py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+              >
+                Try with Live Camera
+              </button>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <video ref={videoRef} autoPlay playsInline className="rounded-md shadow-md w-full" />
+                <button
+                  onClick={captureImage}
+                  className="py-2 px-4 bg-green-600 text-white rounded hover:bg-green-700 transition"
+                >
+                  Capture Hand Photo
+                </button>
+              </div>
+            )}
+
+            <button
+              onClick={() => {
+                setRingSize(100);
+                setPosition({ x: 0, y: 0 });
+              }}
+              className="py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded transition"
+            >
+              Reset Ring
+            </button>
+          </aside>
+        </div>
       </div>
-    </>
+    </div>
   );
 };
 
-export default VirtualTryOn;
+export default RingTryOn;
