@@ -114,7 +114,7 @@ const RingTryOn = () => {
           </h1>
         </header>
 
-        <div className="flex flex-col lg:flex-row p-4 gap-6">
+        <div className="flex flex-col lg:flex-row p-4 gap-6 overflow-y-auto">
           {/* Try-On Area */}
           <div className="flex-1 relative min-h-[320px] lg:min-h-[500px]">
             {isLoading && (
