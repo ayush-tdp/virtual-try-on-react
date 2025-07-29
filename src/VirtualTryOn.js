@@ -106,8 +106,8 @@ const RingTryOn = () => {
   };
 
   return (
-    <div className="h-screen bg-gray-100 flex flex-col items-center p-4">
-      <div className="w-full h-full max-w-5xl bg-white rounded-lg shadow-md overflow-hidden">
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-4">
+      <div className="w-full max-w-5xl bg-white rounded-lg shadow-md">
         <header className="text-center p-4 border-b border-gray-200">
           <h1 className="text-2xl font-semibold text-gray-800">
             Virtual Ring Try-On
