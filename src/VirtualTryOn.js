@@ -175,8 +175,8 @@ const RingTryOn = () => {
               </label>
               <input
                 type="range"
-                min="1"
-                max="500"
+                min="10"
+                max="200"
                 value={ringSize}
                 onChange={(e) => setRingSize(parseInt(e.target.value, 10))}
                 className="w-full"
